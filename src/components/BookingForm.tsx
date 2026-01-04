@@ -64,9 +64,9 @@ const BookingForm: React.FC = () => {
         const intervalMs = 15 * 60000; // 15 minutes interval
 
         result.blocks.forEach((block: { start: string, end: string }) => {
-          // Parse as dates
-          const blockStart = new Date(block.start);
-          const blockEnd = new Date(block.end);
+          // Parse as dates (Strip Z to force local time interpretation)
+          const blockStart = new Date(block.start.replace('Z', ''));
+          const blockEnd = new Date(block.end.replace('Z', ''));
 
           let cursor = new Date(blockStart.getTime());
 
