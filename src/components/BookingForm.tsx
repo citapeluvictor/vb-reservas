@@ -68,30 +68,36 @@ const BookingForm: React.FC = () => {
           const blockStart = new Date(block.start.replace('Z', ''));
           const blockEnd = new Date(block.end.replace('Z', ''));
 
-          let cursor = new Date(blockStart.getTime());
+          const blockDuration = blockEnd.getTime() - blockStart.getTime();
 
-          // Round cursor up to next 15 min if needed
-          const remainder = cursor.getTime() % intervalMs;
-          if (remainder !== 0) {
-            cursor = new Date(cursor.getTime() + (intervalMs - remainder));
+          // HYBRID LOGIC
+          // 1. Long Services (>= 120 min / 2 hours)
+          if (selectedService.durationMinutes >= 120) {
+            // Validate against raw block duration first
+            if (blockDuration >= serviceDurationMs) {
+              // Block is big enough, generate slots within it
+              // We still align to 15 mins for consistent start times
+              let cursor = new Date(blockStart.getTime());
+              const remainder = cursor.getTime() % intervalMs;
+              if (remainder !== 0) cursor = new Date(cursor.getTime() + (intervalMs - remainder));
+
+              while (cursor.getTime() + serviceDurationMs <= blockEnd.getTime()) {
+                addSlot(newSlots, cursor);
+                cursor = new Date(cursor.getTime() + intervalMs);
+              }
+            }
           }
+          // 2. Short Services (< 120 min)
+          else {
+            // Standard 15-min slicing logic
+            let cursor = new Date(blockStart.getTime());
+            const remainder = cursor.getTime() % intervalMs;
+            if (remainder !== 0) cursor = new Date(cursor.getTime() + (intervalMs - remainder));
 
-          // Strict check: Slot Start + Duration <= Block End
-          while (cursor.getTime() + serviceDurationMs <= blockEnd.getTime()) {
-            // Local date string format YYYY-MM-DD for grouping
-            const year = cursor.getFullYear();
-            const month = String(cursor.getMonth() + 1).padStart(2, '0');
-            const day = String(cursor.getDate()).padStart(2, '0');
-            const dateKey = `${year}-${month}-${day}`;
-
-            // Time string HH:mm
-            const timeStr = cursor.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
-
-            if (!newSlots[dateKey]) newSlots[dateKey] = [];
-            if (!newSlots[dateKey].includes(timeStr)) newSlots[dateKey].push(timeStr);
-
-            // Advance 15 mins
-            cursor = new Date(cursor.getTime() + intervalMs);
+            while (cursor.getTime() + serviceDurationMs <= blockEnd.getTime()) {
+              addSlot(newSlots, cursor);
+              cursor = new Date(cursor.getTime() + intervalMs);
+            }
           }
         });
 
@@ -106,6 +112,19 @@ const BookingForm: React.FC = () => {
     } finally {
       setLoadingSlots(false);
     }
+  };
+
+  // Helper to add slots to state
+  const addSlot = (slotsDict: { [key: string]: string[] }, dateObj: Date) => {
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+
+    const timeStr = dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+    if (!slotsDict[dateKey]) slotsDict[dateKey] = [];
+    if (!slotsDict[dateKey].includes(timeStr)) slotsDict[dateKey].push(timeStr);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
