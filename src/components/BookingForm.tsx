@@ -45,15 +45,19 @@ const BookingForm: React.FC = () => {
     end.setDate(end.getDate() + 14);
 
     try {
-      const response = await fetch(GAS_WEB_APP_URL, {
-        method: 'POST',
-        body: JSON.stringify({
-          action: 'getSlots',
-          startDate: start.toISOString(),
-          endDate: end.toISOString(),
-          durationMinutes: selectedService.durationMinutes
-        }),
-      });
+      const response = await fetch(API_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    action: "getAvailability",
+    startDate: start.toISOString(),
+    endDate: end.toISOString(),
+    durationMinutes: selectedService.durationMinutes,
+  }),
+});
+
 
       const result = await response.json();
 
